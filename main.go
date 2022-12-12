@@ -20,6 +20,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
@@ -90,11 +92,24 @@ func InsertRows(conn driver.Conn) error {
 	//object_id: 2043139031129, 28004040077
 	//conn, err := GetNativeConnection(nil, nil, nil)
 	fmt.Println("in query row feeds item")
+
 	services := [10]string{"freshrelease", "freshbots", "freshdesk", "freshsales", "freshidv2", "freshmarketer", "freshinbox", "freshchat", "ubx", "wallet"}
 	feedTypes := [10]string{"audit", "ticket", "change", "alert_log", "asset", "problem", "workflow", "alert", "import_log", "Issue"}
 
-	rowsInOneIteration := 100000
+	numServices := len(services)
+	numFeedTypes := len(feedTypes)
+	batchSize := 1000
+	rowsInOneIteration := numServices * numFeedTypes * batchSize
 	totalRequiredRows := 5000000
+	if len(os.Args) > 1 {
+		rows := os.Args[1]
+		i, err := strconv.Atoi(rows)
+		if err != nil {
+			// ... handle error
+			panic(err)
+		}
+		totalRequiredRows = i
+	}
 	totalIteration := totalRequiredRows / rowsInOneIteration
 	var account_id uint64 = 590905
 	var object_id uint64 = 28004040077
@@ -122,7 +137,7 @@ func InsertRows(conn driver.Conn) error {
 					return err
 				}
 
-				for i := 0; i < 1000; i++ {
+				for i := 0; i < batchSize; i++ {
 					start += 400000
 					if err := batch.Append(
 						service,
