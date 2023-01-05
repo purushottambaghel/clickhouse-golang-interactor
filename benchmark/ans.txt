@@ -1,0 +1,2 @@
+hello
+/Users/pubaghel/Documents/GitHub/clickhouse-golang-interactor/benchmark
