@@ -1,6 +1,7 @@
 {
+    "staging": false,
     "clickhouse": {
-        "host": "127.0.0.1",
-        "port": 9000
-    }
+        "host": ["127.0.0.1:9000","127.0.0.1:8000"]
+    },
+    "totalRequiredRows": 700000
 }

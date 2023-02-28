@@ -1,0 +1,10 @@
+{
+    "staging": true,
+    "clickhouse": {
+        "host": ["10.119.132.15:9000","10.119.132.5:9000","10.119.132.17:9000"],
+        "username":"readonly",
+        "password":"readonly"
+
+    },
+    "totalRequiredRows": 700000
+}

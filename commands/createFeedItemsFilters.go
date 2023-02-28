@@ -9,6 +9,7 @@ import (
 	"example.com/m/connection"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var cmdFeedsItemFilters = &cobra.Command{
@@ -22,14 +23,19 @@ var cmdFeedsItemFilters = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		conn, err := connection.GetConnection()
 		fmt.Println("got connection", conn, err)
-		loadingDataForAccountId(conn)
+		//loadingDataForAccountId(conn)
+		insertDataForAccountId(conn)
 	},
 }
 
 func loadingDataForAccountId(conn driver.Conn) error {
 
 	fmt.Println("starting table creation")
-	conn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS mockfeeds")
+
+	if err := conn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS mockfeeds"); err != nil {
+		fmt.Println("error:", err)
+		return err
+	}
 
 	//fmt.Println(conn.Exec(context.Background(), "show tables"))
 
@@ -82,16 +88,14 @@ func insertDataForAccountId(conn driver.Conn) error {
 	numFeedTypes := len(feedTypes)
 	batchSize := 1000
 	rowsInOneIteration := numServices * numFeedTypes * batchSize
-	totalRequiredRows := 500000
-	// if len(os.Args) > 1 {
-	// 	rows := os.Args[1]
-	// 	i, err := strconv.Atoi(rows)
-	// 	if err != nil {
-	// 		// ... handle error
-	// 		panic(err)
-	// 	}
-	// 	totalRequiredRows = i
-	// }
+
+	var totalRequiredRows int = viper.GetInt("totalRequiredRows")
+	fmt.Println("total rows to be created ", totalRequiredRows)
+	if totalRequiredRows == 0 {
+		fmt.Println("in if")
+		totalRequiredRows = 500000
+	}
+
 	totalIteration := totalRequiredRows / rowsInOneIteration
 	var account_id uint64 = 590905
 	var object_id uint64 = 28004040077
@@ -112,7 +116,7 @@ func insertDataForAccountId(conn driver.Conn) error {
 				start := time.Date(
 					2022, 9, 17, 20, 34, 58, 651387237, time.UTC).UnixMilli()
 
-				batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO mockfeeds.feeds_items_account_id")
+				batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO mockfeeds.feeds_items_filters_part")
 				if err != nil {
 					fmt.Println(err)
 					return err

@@ -3,13 +3,12 @@ package commands
 import (
 	"context"
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	"example.com/m/connection"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var cmdFeedsItem = &cobra.Command{
@@ -29,13 +28,18 @@ var cmdFeedsItem = &cobra.Command{
 
 func CreateTableWOServiceIdTable(conn driver.Conn) error {
 
+	if err := conn.Exec(context.Background(), "CREATE DATABASE IF NOT EXISTS mockfeeds"); err != nil {
+		fmt.Println("error:", err)
+		return err
+	}
+
 	fmt.Println("in create table")
-	conn.Exec(context.Background(), "DROP TABLE IF EXISTS test_feeds_item_wo_service")
+	conn.Exec(context.Background(), "DROP TABLE IF EXISTS mockfeeds.test_feeds_item_wo_service")
 
 	//fmt.Println(conn.Exec(context.Background(), "show tables"))
 
 	if err := conn.Exec(context.Background(), `
-	CREATE TABLE test_feeds_item_wo_service
+	CREATE TABLE mockfeeds.test_feeds_item_wo_service
 	(
 		feed_type String,
 		event_timestamp_in_ms DateTime64(3, 'UTC'),
@@ -43,10 +47,11 @@ func CreateTableWOServiceIdTable(conn driver.Conn) error {
 		account_id UInt64,
 		data String
 	)
-	ENGINE = MergeTree
+	ENGINE = ReplicatedMergeTree('i','replica 1')
 	PRIMARY KEY (feed_type, account_id, object_id, event_timestamp_in_ms)
 	ORDER BY (feed_type, account_id, object_id, event_timestamp_in_ms)
 	`); err != nil {
+		print("err ", err)
 		return err
 	}
 	InsertRowsInWOServiceIdTable(conn)
@@ -69,16 +74,14 @@ func InsertRowsInWOServiceIdTable(conn driver.Conn) error {
 	numFeedTypes := len(feedTypes)
 	batchSize := 1000
 	rowsInOneIteration := numServices * numFeedTypes * batchSize
-	totalRequiredRows := 5000000
-	if len(os.Args) > 1 {
-		rows := os.Args[1]
-		i, err := strconv.Atoi(rows)
-		if err != nil {
-			// ... handle error
-			panic(err)
-		}
-		totalRequiredRows = i
+
+	var totalRequiredRows int = viper.GetInt("totalRequiredRows")
+	fmt.Println("total rows to be created ", totalRequiredRows)
+	if totalRequiredRows == 0 {
+		fmt.Println("in if")
+		totalRequiredRows = 500000
 	}
+
 	totalIteration := totalRequiredRows / rowsInOneIteration
 	var account_id uint64 = 590905
 	var object_id uint64 = 28004040077
@@ -100,7 +103,7 @@ func InsertRowsInWOServiceIdTable(conn driver.Conn) error {
 				start := time.Date(
 					2022, 9, 17, 20, 34, 58, 651387237, time.UTC).UnixMilli()
 
-				batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO test_feeds_item_wo_service")
+				batch, err := conn.PrepareBatch(context.Background(), "INSERT INTO mockfeeds.test_feeds_item_wo_service")
 				if err != nil {
 					fmt.Println(err)
 					return err

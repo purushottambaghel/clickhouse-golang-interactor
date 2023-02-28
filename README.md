@@ -11,3 +11,6 @@ env GOOS=linux go build -tags static -o interactor main.go
 ./interactor <numsOfRowsToBeCreated>
 argument is optional. Default value is 50 million
 
+# how to run in local
+go run main.go ct feedsItemFilters
+
